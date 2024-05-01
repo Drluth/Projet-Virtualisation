@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { useTheme } from 'vuetify'
-
 import logo from '@images/logo.svg?raw'
 import authV1MaskDark from '@images/pages/auth-v1-mask-dark.png'
 import authV1MaskLight from '@images/pages/auth-v1-mask-light.png'
 import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
 import authV1Tree from '@images/pages/auth-v1-tree.png'
+import { shallowRef } from 'vue'
+import { useTheme } from 'vuetify'
 import { VForm } from 'vuetify/lib/components/index.mjs'
 
 const form = ref({
-  email: '',
-  password: '',
+  opt: '',
 });
 
-const remember = ref(false)
+const loading = shallowRef(false)
 
+const remember = ref(false)
 const vuetifyTheme = useTheme()
 
 const authThemeMask = computed(() => {
@@ -28,27 +28,28 @@ const isPasswordVisible = ref(false)
 const refForm = ref<VForm>()
 
 const requiredValidator = (v: string) => !!v || 'This field is required'
-const emailValidator = (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'
-const minLengthValidator = (v: string) => v.length >= 8 || 'This field  must be at least 8 characters'
-const maxLengthValidator = (v: string) => v.length <= 20 || 'This field  must be at most 20 characters'
+const minLengthValidator = (v: string) => v.length > 6 || 'This field  must be at least 06 characters'
+const maxLengthValidator = (v: string) => v.length < 6 || 'This field  must be at most 06 characters'
 
 const submitForm = () => {
   if (validateForm()) {
-    console.log("Data "+ form.value)
-    sendDataToServer()
+    console.log("Data ", form.value);
+    sendDataToServer();
   } else {
-    alert('Veuillez remplir tous les champs requis correctement.')
+    alert("donnees abscentes")
   }
 }
 
 const validateForm = () => {
-  return (
-    requiredValidator(form.value.email) &&
-    emailValidator(form.value.email) &&
-    requiredValidator(form.value.password) &&
-    minLengthValidator(form.value.password) &&
-    maxLengthValidator(form.value.password)
-  )
+  if (!requiredValidator(form.value.opt)) {
+    return 'OPT is required';
+  } else if (!minLengthValidator(form.value.opt)) {
+    return 'OPT must be at least 6 characters';
+  } else if (!maxLengthValidator(form.value.opt)) {
+    return 'OPT must be at most 6 characters';
+  } else {
+    return true; // Form is valid
+  }
 }
 
 const sendDataToServer = () => {
@@ -93,7 +94,9 @@ const sendDataToServer = () => {
             <VCol cols="12">
               <v-otp-input
                 length="6"
+                v-model="form.opt"
                 focus-all
+                :loading="loading"
                 focused >
               </v-otp-input>            
             </VCol>
@@ -104,6 +107,7 @@ const sendDataToServer = () => {
               <!-- login button -->
               <VBtn
                 block
+                :disabled="form.opt.length <= 5  || loading"
                 type="submit"
               >
                 Confirm OPT

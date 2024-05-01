@@ -8,6 +8,10 @@ import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
 import authV1Tree from '@images/pages/auth-v1-tree.png'
 import { VForm } from 'vuetify/lib/components/index.mjs'
 
+
+import { ToastPluginApi, useToast } from 'vue-toast-notification'
+import 'vue-toast-notification/dist/theme-sugar.css'
+
 const form = ref({
   email: '',
   password: '',
@@ -32,24 +36,43 @@ const emailValidator = (v: string) => /.+@.+\..+/.test(v) || 'Email must be vali
 const minLengthValidator = (v: string) => v.length >= 8 || 'This field  must be at least 8 characters'
 const maxLengthValidator = (v: string) => v.length <= 20 || 'This field  must be at most 20 characters'
 
+type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+const showToast = (message: string, type: ToastType, icon: string, options: any = {}) => {
+  const toast = useToast() as ToastPluginApi
+  toast[type](message, {
+    icon: icon,
+    position: 'top-right',
+    timeout: 5000,
+    ...options
+  })
+}
+
+
 const submitForm = () => {
-  if (validateForm()) {
-    console.log("Data "+ form.value)
-    sendDataToServer()
+  const formData = {
+    email: form.value.email,
+    password: form.value.password,
+  };
+
+  if (validateForm(formData)) {
+    showToast('Missing or incorrect information.', 'error', 'error_outline');
+    // sendDataToServer(formData);
   } else {
-    alert('Veuillez remplir tous les champs requis correctement.')
+    showToast('Missing or incorrect information.', 'error', 'error_outline');
   }
 }
 
-const validateForm = () => {
+const validateForm = (formData: { email: string; password: string }) => {
   return (
-    requiredValidator(form.value.email) &&
-    emailValidator(form.value.email) &&
-    requiredValidator(form.value.password) &&
-    minLengthValidator(form.value.password) &&
-    maxLengthValidator(form.value.password)
-  )
-}
+    requiredValidator(formData.email) &&
+    emailValidator(formData.email) &&
+    requiredValidator(formData.password) &&
+    minLengthValidator(formData.password) &&
+    maxLengthValidator(formData.password)
+  );
+};
+
 
 const sendDataToServer = () => {
   console.log('Form data:', form.value)

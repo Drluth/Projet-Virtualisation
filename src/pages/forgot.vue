@@ -10,7 +10,6 @@ import { VForm } from 'vuetify/lib/components/index.mjs'
 
 const form = ref({
   email: '',
-  password: '',
 });
 
 const remember = ref(false)
@@ -29,8 +28,6 @@ const refForm = ref<VForm>()
 
 const requiredValidator = (v: string) => !!v || 'This field is required'
 const emailValidator = (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'
-const minLengthValidator = (v: string) => v.length >= 8 || 'This field  must be at least 8 characters'
-const maxLengthValidator = (v: string) => v.length <= 20 || 'This field  must be at most 20 characters'
 
 const submitForm = () => {
   if (validateForm()) {
@@ -44,10 +41,7 @@ const submitForm = () => {
 const validateForm = () => {
   return (
     requiredValidator(form.value.email) &&
-    emailValidator(form.value.email) &&
-    requiredValidator(form.value.password) &&
-    minLengthValidator(form.value.password) &&
-    maxLengthValidator(form.value.password)
+    emailValidator(form.value.email)
   )
 }
 
@@ -77,7 +71,7 @@ const sendDataToServer = () => {
         </VCardTitle>
       </VCardItem>
 
-      <VCardText class="pt-2">
+      <VCardText class="pt-2 text-center">
         <h5 class="text-h5 font-weight-semibold mb-1">
           Reset Password ! 🔒
         </h5>
