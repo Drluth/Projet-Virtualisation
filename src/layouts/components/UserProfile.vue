@@ -1,5 +1,47 @@
 <script setup lang="ts">
 import avatar1 from '@images/avatars/avatar-1.png'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
+
+const account = JSON.parse(localStorage.getItem('account') || '{}') || {}
+
+const accountData = {
+  avatarImg: account.photo || avatar1,
+  fullname: account.fullname || '',
+}
+
+const router = useRouter()
+
+const accountDataLocal = ref(structuredClone(accountData))
+
+
+const logout = () => {
+  Swal.fire({
+    title: 'Are you sure?',
+    text: 'Do you want to log out?',
+    icon: 'warning',
+    showCancelButton: true,
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Continue'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      localStorage.removeItem('account');
+      Swal.fire({
+        title: 'Logged Out!',
+        text: 'You have been logged out successfully.',
+        showConfirmButton: true,
+        confirmButtonText: 'Continue'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          router.push('/');
+        }
+      });
+    }
+  });
+};
+
+
 </script>
 
 <template>
@@ -16,7 +58,7 @@ import avatar1 from '@images/avatars/avatar-1.png'
       color="primary"
       variant="tonal"
     >
-      <VImg :src="avatar1" />
+      <VImg :src="account.photo" />
 
       <!-- SECTION Menu -->
       <VMenu
@@ -41,72 +83,17 @@ import avatar1 from '@images/avatars/avatar-1.png'
                     color="primary"
                     variant="tonal"
                   >
-                    <VImg :src="avatar1" />
+                    <VImg :src="account.photo" />
                   </VAvatar>
                 </VBadge>
               </VListItemAction>
             </template>
 
             <VListItemTitle class="font-weight-semibold">
-              John Doe
+              {{ account.fullname }}
             </VListItemTitle>
-            <VListItemSubtitle>Admin</VListItemSubtitle>
+            <VListItemSubtitle>User</VListItemSubtitle>
           </VListItem>
-          <VDivider class="my-2" />
-
-          <!-- 👉 Profile -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="ri-user-line"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>Profile</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 Settings -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="ri-settings-4-line"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>Settings</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 Pricing -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="ri-money-dollar-circle-line"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>Pricing</VListItemTitle>
-          </VListItem>
-
-          <!-- 👉 FAQ -->
-          <VListItem link>
-            <template #prepend>
-              <VIcon
-                class="me-2"
-                icon="ri-question-line"
-                size="22"
-              />
-            </template>
-
-            <VListItemTitle>FAQ</VListItemTitle>
-          </VListItem>
-
-          <!-- Divider -->
           <VDivider class="my-2" />
 
           <!-- 👉 Logout -->
@@ -119,7 +106,7 @@ import avatar1 from '@images/avatars/avatar-1.png'
               />
             </template>
 
-            <VListItemTitle>Logout</VListItemTitle>
+            <VListItemTitle @click="logout">Logout</VListItemTitle>
           </VListItem>
         </VList>
       </VMenu>

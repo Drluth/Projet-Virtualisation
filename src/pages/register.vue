@@ -1,18 +1,91 @@
 <script setup lang="ts">
 import { useTheme } from 'vuetify'
+import { useRouter } from 'vue-router'
 import { VForm } from 'vuetify/components/VForm'
-
+import axios from 'axios'
 import logo from '@images/logo.svg?raw'
 import authV1MaskDark from '@images/pages/auth-v1-mask-dark.png'
 import authV1MaskLight from '@images/pages/auth-v1-mask-light.png'
 import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
 import authV1Tree from '@images/pages/auth-v1-tree.png'
+import { ref, onMounted, watch } from 'vue'
 
-
+import { ToastPluginApi, useToast } from 'vue-toast-notification'
 import 'vue-toast-notification/dist/theme-sugar.css'
 
+import { getStorage, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+const storage = getStorage()
+const router = useRouter()
 
+const redirectToForgotPage = () => {
+  // Utilisez la fonction push de l'objet router pour rediriger vers la route '/forgot'
+  router.push('/opt')
+}
 
+const resetForm = () => {
+  // Reset each form field to empty string or default value
+  form.value.fullname = '';
+  form.value.email = '';
+  form.value.password = '';
+  form.value.confirmpassword = '';
+  form.value.phoneNumber = '';
+  form.value.fileUpload = [];
+  form.value.photo = [];
+};
+
+const uploadFileToFirebase = async (file: File) => {
+  try {
+    // Utilisez la référence du service de stockage Firebase obtenue dans main.ts
+    const storageReference = storageRef(storage, `uploads/${file.name}`)
+    const snapshot = await uploadBytes(storageReference, file)
+    console.log('Fichier téléversé avec succès:', snapshot.metadata.fullPath)
+    const downloadURL = await getDownloadURL(storageReference) // Appel de getDownloadURL avec la référence de stockage
+    return downloadURL
+  } catch (error) {
+    console.error('Erreur lors du téléversement du fichier:', error)
+    throw error
+  }
+}
+
+const handleFileUploadCv: (event: Event) => Promise<void> = async event => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  try {
+    const downloadURL = await uploadFileToFirebase(file)
+    console.log('URL de téléchargement du fichier:', downloadURL)
+    form.value.fileUpload = downloadURL // Mettre à jour form.fileUpload
+    showToast('Cv taken successfully.', 'success', 'check_circle_outline')
+  } catch (error) {
+    showToast('Cv could not be supported.', 'error', 'error_outline')
+    console.error('Erreur lors du téléversement du fichier vers Firebase:', error)
+  }
+}
+
+const handleFileUploadPhoto: (event: Event) => Promise<void> = async event => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  try {
+    const downloadURL = await uploadFileToFirebase(file)
+    console.log('URL de téléchargement du fichier:', downloadURL)
+    showToast('Photo taken successfully.', 'success', 'check_circle_outline')
+    form.value.photo = downloadURL // Mettre à jour form.photo
+  } catch (error) {
+    showToast('Photo could not be supported.', 'error', 'error_outline')
+    form.value.photo = ''
+    console.error('Erreur lors du téléversement du fichier vers Firebase:', error)
+  }
+}
+
+type ToastType = 'success' | 'error' | 'info' | 'warning'
+const showToast = (message: string, type: ToastType, icon: string, options: any = {}) => {
+  const toast = useToast() as ToastPluginApi
+  toast[type](message, {
+    icon: icon,
+    position: 'top-right',
+    timeout: 12000,
+    ...options,
+  })
+}
 
 const form = ref({
   fullname: '',
@@ -20,10 +93,9 @@ const form = ref({
   password: '',
   confirmpassword: '',
   phoneNumber: '',
-  fileUpload:  null as File | null,
-  photo: null as File | null,
+  fileUpload: [], // Modifier en tant que tableau
+  photo: [],
 })
-
 
 const vuetifyTheme = useTheme()
 
@@ -35,8 +107,6 @@ const privacyPolicies = ref(false)
 const isPasswordVisible = ref(false)
 const isPasswordVisible1 = ref(false)
 
-
-
 const refForm = ref<VForm>()
 
 const requiredValidator = (v: string) => !!v || 'This field is required'
@@ -44,31 +114,35 @@ const emailValidator = (v: string) => /.+@.+\..+/.test(v) || 'Email must be vali
 const minLengthValidator = (v: string) => v.length >= 5 || 'This field  must be at least 05 characters'
 const maxLengthValidator = (v: string) => v.length <= 50 || 'This field  must be at most 50 characters'
 
-const requiredFileValidator = (value: File | null) => !!value || 'This file is required';
-const fileMimeTypeValidatorCV = (value: File | null) => !value || value.type != 'application/pdf' || 'This file is not an pdf file';
-const fileMimeTypeValidatorPhoto = (value: File | null) => !value || !['image/png', 'image/jpg', 'image/jpeg'].includes(value.type) || 'This file is not an image file';
+const requiredFileValidator = (value: File | null) => !!value || 'This file is required'
+const fileMimeTypeValidatorCV = (value: File | null) =>
+  !value || value.type != 'application/pdf' || 'This file is not an pdf file'
+const fileMimeTypeValidatorPhoto = (value: File | null) =>
+  !value || !['image/png', 'image/jpg', 'image/jpeg'].includes(value.type) || 'This file is not an image file'
 
-const maxSizeCV = 3000000;  
-const maxSizePhoto = 2000000; // 2 Mo 
-const fileMaxSizeValidatorPhoto = (value: File | null) => !value || value.size > maxSizePhoto || 'This file size should be less than 2MB';
-const fileMaxSizeValidatorCV = (value: File | null) => !value || value.size > maxSizeCV || 'This file size should be less than 3MB';
-
-
-
-const passwordMatchValidator = (v: any, t: any) => v === t || 'Passwords do not match';
+const maxSizeCV = 3000000
+const maxSizePhoto = 2000000 // 2 Mo
+const fileMaxSizeValidatorPhoto = (value: File | null) =>
+  !value || value.size > maxSizePhoto || 'This file size should be less than 2MB'
+const fileMaxSizeValidatorCV = (value: File | null) =>
+  !value || value.size > maxSizeCV || 'This file size should be less than 3MB'
+const passwordMatchValidator = (v: any, t: any) => v === t || 'Passwords do not match'
 const minLengthAndExactLengthAndPrefixValidator = (v: string) => {
   if (v.length !== 12) {
-    return 'This field must be exactly 12 characters long';
+    return 'This field must be exactly 12 characters long'
   }
   if (!v.startsWith('2376')) {
-    return 'This field must start with "2376"';
+    return 'This field must start with "2376"'
   }
-  return true;
+  return true
+}
+
+const saveEmailToLocalStorage = (email: string) => {
+  localStorage.setItem('userEmail', email);
 };
 
-
-const submitForm = () => {
-  
+const submitForm = (event: Event) => {
+  event.preventDefault()
   const formData = {
     fullname: form.value.fullname,
     email: form.value.email,
@@ -77,60 +151,67 @@ const submitForm = () => {
     phoneNumber: form.value.phoneNumber,
     fileUpload: form.value.fileUpload,
     photo: form.value.photo,
-  };
+  }
 
   if (validateForm()) {
-    // sendDataToServer(formData);
+    axios
+      .post('http://localhost:3000/api/v1/users/add', {
+        fullname: form.value.fullname,
+        email: form.value.email,
+        password: form.value.password,
+        confirmpassword: form.value.confirmpassword,
+        phoneNumber: form.value.phoneNumber,
+        fileUpload: form.value.fileUpload,
+        photo: form.value.photo,
+      })
+      .then(
+        response => {
+          if (response.status === 200) {
+            console.log(response)
+            saveEmailToLocalStorage(response.data.newUser.email);
+            redirectToForgotPage();
+            setTimeout(() => {
+              resetForm();
+            }, 3000);
+          } else {
+            showToast('Server unavailable please check again later.', 'warning', 'error_outline')
+          }
+        },
+        error => {
+          showToast('Missing or incorrect information.', 'error', 'error_outline')
+        },
+      )
+    console.log(formData)
   } else {
-    console.log(formData);
+    showToast('Missing or incorrect information.', 'error', 'error_outline')
   }
 }
 
-      // Ajoutez ici le  pour gérer les erreurs de soumission du formulaire
-
+// Ajoutez ici le  pour gérer les erreurs de soumission du formulaire
 
 const validateForm = () => {
   const fullnameValidations = [
     requiredValidator(form.value.fullname),
     minLengthValidator(form.value.fullname),
-    maxLengthValidator(form.value.fullname)
-  ];
-  const fullnameIsValid = fullnameValidations.every(result => result === true);
+    maxLengthValidator(form.value.fullname),
+  ]
+  const fullnameIsValid = fullnameValidations.every(result => result === true)
 
-  const emailValidations = [
-    requiredValidator(form.value.email),
-    emailValidator(form.value.email)
-  ];
-  const emailIsValid = emailValidations.every(result => result === true);
+  const emailValidations = [requiredValidator(form.value.email), emailValidator(form.value.email)]
+  const emailIsValid = emailValidations.every(result => result === true)
 
   const phoneNumberValidations = [
     requiredValidator(form.value.phoneNumber),
-    minLengthAndExactLengthAndPrefixValidator(form.value.phoneNumber)
-  ];
-  const phoneNumberIsValid = phoneNumberValidations.every(result => result === true);
+    minLengthAndExactLengthAndPrefixValidator(form.value.phoneNumber),
+  ]
+  const phoneNumberIsValid = phoneNumberValidations.every(result => result === true)
 
-  const passwordValidations = [
-    requiredValidator(form.value.password),
-    minLengthValidator(form.value.password)
-  ];
-  const passwordIsValid = passwordValidations.every(result => result === true);
-
-  const confirmPasswordValidations = [
-    requiredValidator(form.value.confirmpassword),
-    minLengthValidator(form.value.confirmpassword),
-    passwordMatchValidator(form.value.confirmpassword, form.value.password)
-  ];
-  const confirmPasswordIsValid = confirmPasswordValidations.every(result => result === true);
+  const passwordValidations = [requiredValidator(form.value.password), minLengthValidator(form.value.password)]
+  const passwordIsValid = passwordValidations.every(result => result === true)
 
   // Vérifier si toutes les règles de validation sont respectées
-  return (
-    fullnameIsValid &&
-    emailIsValid &&
-    phoneNumberIsValid &&
-    passwordIsValid &&
-    confirmPasswordIsValid
-  );
-};
+  return fullnameIsValid && emailIsValid && phoneNumberIsValid && passwordIsValid
+}
 </script>
 
 <template>
@@ -157,7 +238,10 @@ const validateForm = () => {
       </VCardText>
 
       <VCardText>
-        <VForm ref="refForm" @submit.native.prevent="submitForm">
+        <VForm
+          ref="refForm"
+          @submit.prevent="submitForm"
+        >
           <VRow>
             <!-- fullname -->
             <VCol cols="12">
@@ -213,8 +297,12 @@ const validateForm = () => {
                 :type="isPasswordVisible ? 'text' : 'password'"
                 :append-inner-icon="isPasswordVisible ? 'ri-eye-off-line' : 'ri-eye-line'"
                 @click:append-inner="isPasswordVisible = !isPasswordVisible"
-                :rules="[requiredValidator, minLengthValidator, maxLengthValidator]"
-                
+                :rules="[
+                  requiredValidator,
+                  minLengthValidator,
+                  maxLengthValidator,
+                  () => passwordMatchValidator(form.confirmpassword, form.password),
+                ]"
               />
             </VCol>
 
@@ -229,34 +317,47 @@ const validateForm = () => {
                 placeholder="············"
                 :type="isPasswordVisible1 ? 'text' : 'password'"
                 :append-inner-icon="isPasswordVisible1 ? 'ri-eye-off-line' : 'ri-eye-line'"
-                @click:append-inner="isPasswordVisible1 = !isPasswordVisible1"               
-                 :rules="[requiredValidator]"
-
+                @click:append-inner="isPasswordVisible1 = !isPasswordVisible1"
+                :rules="[
+                  requiredValidator,
+                  minLengthValidator,
+                  maxLengthValidator,
+                  () => passwordMatchValidator(form.confirmpassword, form.password),
+                ]"
               />
             </VCol>
 
-            
-            <VCol cols="12" sm="6">
-              <VFileInput 
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VFileInput
                 v-model="form.photo"
-                prepend-inner-icon="ri-camera-line" 
-                prepend-icon="" accept="image/jpg, image/jpeg, image/jpeg" 
-                label="Profile Picture" 
-                show-size 
-                counter 
-                :rules="[requiredFileValidator, fileMimeTypeValidatorPhoto]" 
+                prepend-inner-icon="ri-camera-line"
+                prepend-icon=""
+                accept="image/jpg, image/jpeg, image/jpeg"
+                label="Profile Picture"
+                show-size
+                counter
+                :rules="[requiredFileValidator, fileMimeTypeValidatorPhoto]"
+                @change="handleFileUploadPhoto"
               />
             </VCol>
 
-            <VCol cols="12" sm="6">
-              <VFileInput 
-              v-model="form.fileUpload"
-              prepend-inner-icon="ri-file-pdf-2-line" 
-              prepend-icon="" 
-              accept="application/pdf" 
-              label="Curriculum Vita" 
-              :rules="[requiredFileValidator, fileMimeTypeValidatorCV]"  
-            />
+            <VCol
+              cols="12"
+              sm="6"
+            >
+              <VFileInput
+                prepend-inner-icon="ri-file-pdf-2-line"
+                prepend-icon=""
+                accept="application/pdf"
+                label="Curriculum Vitae"
+                show-size
+                counter
+                :rules="[requiredFileValidator, fileMimeTypeValidatorCV]"
+                @change="handleFileUploadCv"
+              />
             </VCol>
 
             <VCol cols="12">

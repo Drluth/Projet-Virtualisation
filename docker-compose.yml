@@ -1,0 +1,45 @@
+version: '3.7'
+services: 
+    mysql_db_container:
+        image: mysql:latest
+        environment:
+            MYSQL_ROOT_PASSWORD: root_password
+            MYSQL_DATABASE: database_name
+            MYSQL_USER: user_name
+            MYSQL_PASSWORD: user_password
+        ports: 
+          - 3306:3306
+        volumes: 
+            - mysql_db_data_container:/var/lib/mysql
+
+
+    adminer_container:
+        image: adminer:latest
+        environment: 
+            ADMINER_DEFAULT_SERVER: mysql_db_container
+            ADMINER_DESIGN: galkaev
+        ports: 
+          - 8081:8081
+        networks:
+            - fontend_network
+    
+    
+    fontend:
+        image: fontend:latest
+        ports:
+            -8080:8080
+    
+    backend:
+        image: backend:latest
+        ports:
+            -3000:3000
+        networks:
+            - backend_network
+networks:
+    backend_network:
+    fontend_network:
+
+
+
+volumes: 
+    mysql_db_data_container:

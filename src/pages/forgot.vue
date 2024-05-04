@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTheme } from 'vuetify'
 
+import axios from 'axios'
 import logo from '@images/logo.svg?raw'
 import authV1MaskDark from '@images/pages/auth-v1-mask-dark.png'
 import authV1MaskLight from '@images/pages/auth-v1-mask-light.png'
@@ -8,18 +9,31 @@ import authV1Tree2 from '@images/pages/auth-v1-tree-2.png'
 import authV1Tree from '@images/pages/auth-v1-tree.png'
 import { VForm } from 'vuetify/lib/components/index.mjs'
 
+import { ToastPluginApi, useToast } from 'vue-toast-notification'
+import 'vue-toast-notification/dist/theme-sugar.css'
+
+type ToastType = 'success' | 'error' | 'info' | 'warning'
+
+const showToast = (message: string, type: ToastType, icon: string, options: any = {}) => {
+  const toast = useToast() as ToastPluginApi
+  toast[type](message, {
+    icon: icon,
+    position: 'top-right',
+    timeout: 5000,
+    ...options,
+  })
+}
+
 const form = ref({
   email: '',
-});
+})
 
 const remember = ref(false)
 
 const vuetifyTheme = useTheme()
 
 const authThemeMask = computed(() => {
-  return vuetifyTheme.global.name.value === 'light'
-    ? authV1MaskLight
-    : authV1MaskDark
+  return vuetifyTheme.global.name.value === 'light' ? authV1MaskLight : authV1MaskDark
 })
 
 const isPasswordVisible = ref(false)
@@ -31,24 +45,34 @@ const emailValidator = (v: string) => /.+@.+\..+/.test(v) || 'Email must be vali
 
 const submitForm = () => {
   if (validateForm()) {
-    console.log("Data "+ form.value)
-    sendDataToServer()
+    axios
+      .post('http://localhost:3000/api/v1/users/forgot_password', {
+        email: form.value.email,
+      })
+      .then(
+        response => {
+          if (response.status === 200) {
+            showToast('An email containing your new password has been sent to you.', 'info', 'check_circle_outline')
+          } else {
+            showToast('Server unavailable please check again later.', 'warning', 'error_outline')
+          }
+        },
+        error => {
+          showToast('Missing or incorrect information.', 'error', 'error_outline')
+        },
+      )
   } else {
     alert('Veuillez remplir tous les champs requis correctement.')
   }
 }
 
 const validateForm = () => {
-  return (
-    requiredValidator(form.value.email) &&
-    emailValidator(form.value.email)
-  )
+  return requiredValidator(form.value.email) && emailValidator(form.value.email)
 }
 
 const sendDataToServer = () => {
   console.log('Form data:', form.value)
 }
-
 </script>
 
 <template>
@@ -66,22 +90,19 @@ const sendDataToServer = () => {
           </div>
         </template>
 
-        <VCardTitle class="font-weight-semibold text-2xl text-uppercase">
-          Materio
-        </VCardTitle>
+        <VCardTitle class="font-weight-semibold text-2xl text-uppercase"> Materio </VCardTitle>
       </VCardItem>
 
       <VCardText class="pt-2 text-center">
-        <h5 class="text-h5 font-weight-semibold mb-1">
-          Reset Password ! 🔒
-        </h5>
-        <p class="mb-0">
-          If you've forgotten your password, click to reset it.
-        </p>
+        <h5 class="text-h5 font-weight-semibold mb-1">Reset Password ! 🔒</h5>
+        <p class="mb-0">If you've forgotten your password, click to reset it.</p>
       </VCardText>
 
       <VCardText>
-        <VForm ref="refForm" @submit.prevent="submitForm">
+        <VForm
+          ref="refForm"
+          @submit.prevent="submitForm"
+        >
           <VRow>
             <!-- email -->
             <VCol cols="12">
@@ -145,5 +166,5 @@ const sendDataToServer = () => {
 </template>
 
 <style lang="scss">
-@use "@core/scss/template/pages/page-auth.scss";
+@use '@core/scss/template/pages/page-auth.scss';
 </style>
