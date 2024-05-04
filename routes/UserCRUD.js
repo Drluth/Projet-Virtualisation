@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { User } = require('../sequelize');
+const { USER } = require('../sequelize');
 const { OTP } = require('../sequelize');
 const { encode } = require("../middlewares/crypt");
 const otpGenerator = require('otp-generator');
